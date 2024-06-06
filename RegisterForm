@@ -1,0 +1,103 @@
+using System;
+using System.Windows.Forms;
+using MySql.Data.MySqlClient;
+
+namespace lab4C_
+{
+    public partial class RegisterForm : Form
+    {
+        private DatabaseHelper db = new DatabaseHelper();
+
+        public RegisterForm()
+        {
+            InitializeComponent();
+
+            // Przypisanie zdarzeń do przycisków
+            this.btnRegister.Click += new System.EventHandler(this.btnRegister_Click);
+            this.btnLogin.Click += new System.EventHandler(this.btnLogin_Click);
+        }
+
+        private void btnRegister_Click(object sender, EventArgs e)
+        {
+            string firstName = txtFirstName.Text;
+            string lastName = txtLastName.Text;
+            string login = txtLogin.Text;
+            string password = txtPassword.Text;
+            string repeatPassword = txtRepeatPassword.Text;
+            string email = txtEmail.Text;
+
+            // Walidacja danych wejściowych
+            if (password != repeatPassword)
+            {
+                MessageBox.Show("Hasła nie są zgodne!");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(firstName) || string.IsNullOrEmpty(lastName) ||
+                string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password) ||
+                string.IsNullOrEmpty(email))
+            {
+                MessageBox.Show("Wszystkie pola są wymagane!");
+                return;
+            }
+
+            string query = "INSERT INTO users (imie, nazwisko, login, haslo, email, uprawnienia, data_rejestracji) " +
+                           "VALUES (@firstName, @lastName, @login, @password, @Email, 'user', NOW())";
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@firstName", firstName),
+                new MySqlParameter("@lastName", lastName),
+                new MySqlParameter("@login", login),
+                new MySqlParameter("@password", password), // Użycie zwykłego hasła zamiast zahashowanego
+                new MySqlParameter("@Email", email)
+            };
+
+            try
+            {
+                int result = db.ExecuteNonQuery(query, parameters);
+
+                if (result > 0)
+                {
+                    MessageBox.Show("Rejestracja zakończona sukcesem!");
+                    LoginForm loginForm = new LoginForm();
+                    loginForm.Show();
+                    this.Hide();
+                }
+                else
+                {
+                    MessageBox.Show("Rejestracja nie powiodła się.");
+                }
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void btnLogin_Click(object sender, EventArgs e)
+        {
+            LoginForm loginForm = new LoginForm();
+            loginForm.Show();
+            this.Hide();
+        }
+
+        private void txtLastName_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label4_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void RegisterForm_Load(object sender, EventArgs e)
+        {
+
+        }
+    }
+}
