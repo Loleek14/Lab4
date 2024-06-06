@@ -1,0 +1,71 @@
+using MySql.Data.MySqlClient;
+using System;
+using System.Data;
+
+namespace lab4C_
+{
+    public class DatabaseHelper
+    {
+        private string connectionString = "server=localhost;user=root;password=admin;database=event_management";
+
+        public int ExecuteNonQuery(string query, MySqlParameter[] parameters)
+        {
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                using (MySqlCommand cmd = new MySqlCommand(query, connection))
+                {
+                    cmd.Parameters.AddRange(parameters);
+                    connection.Open();
+                    return cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public MySqlDataReader ExecuteQuery(string query, MySqlParameter[] parameters)
+        {
+            MySqlConnection connection = new MySqlConnection(connectionString);
+            MySqlCommand cmd = new MySqlCommand(query, connection);
+            cmd.Parameters.AddRange(parameters);
+            connection.Open();
+            return cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+        }
+
+        public DataTable ExecuteQueryToDataTable(string query, MySqlParameter[] parameters)
+        {
+            DataTable dataTable = new DataTable();
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                using (MySqlCommand cmd = new MySqlCommand(query, connection))
+                {
+                    if (parameters != null)
+                    {
+                        cmd.Parameters.AddRange(parameters);
+                    }
+                    connection.Open();
+                    using (MySqlDataAdapter adapter = new MySqlDataAdapter(cmd))
+                    {
+                        adapter.Fill(dataTable);
+                    }
+                }
+            }
+            return dataTable;
+        }
+
+        public bool TestConnection()
+        {
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                try
+                {
+                    connection.Open();
+                    return true;
+                }
+                catch (MySqlException ex)
+                {
+                    Console.WriteLine("Database connection error: " + ex.Message);
+                    return false;
+                }
+            }
+        }
+    }
+}
