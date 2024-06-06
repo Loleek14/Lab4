@@ -1,0 +1,130 @@
+using System;
+using System.Windows.Forms;
+using MySql.Data.MySqlClient;
+
+namespace lab4C_
+{
+    public partial class LoginForm : Form
+    {
+        private DatabaseHelper db = new DatabaseHelper();
+        private int loginAttempts = 0;
+
+        public LoginForm()
+        {
+            InitializeComponent();
+
+            // Przypisanie zdarzeń do przycisku
+            this.btnLogin.Click += new System.EventHandler(this.btnLogin_Click);
+            this.chkShowPassword.CheckedChanged += new System.EventHandler(this.chkShowPassword_CheckedChanged);
+            this.btnGoToRegister.Click += new System.EventHandler(this.btnGoToRegister_Click); // Dodanie obsługi zdarzenia
+        }
+
+        private void btnLogin_Click(object sender, EventArgs e)
+        {
+            // Sprawdzenie, czy konto jest zablokowane
+            if (loginAttempts >= 3)
+            {
+                MessageBox.Show("Konto zostało zablokowane z powodu zbyt wielu nieudanych prób logowania.");
+                return;
+            }
+
+            string login = txtLogin.Text;
+            string password = txtPassword.Text;
+
+            if (string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password))
+            {
+                MessageBox.Show("Wszystkie pola są wymagane!");
+                return;
+            }
+
+            string query = "SELECT id, haslo, uprawnienia FROM users WHERE login = @login";
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@login", login)
+            };
+
+            try
+            {
+                using (MySqlDataReader reader = db.ExecuteQuery(query, parameters))
+                {
+                    if (reader.Read())
+                    {
+                        string storedPassword = reader.GetString("haslo");
+                        string uprawnienia = reader.GetString("uprawnienia");
+
+                        if (password == storedPassword)
+                        {
+                            loginAttempts = 0; // Resetowanie liczby prób po udanym logowaniu
+                            int userId = reader.GetInt32("id"); // Pobranie userId
+
+                            if (uprawnienia == "user")
+                            {
+                                MessageBox.Show("Zalogowano jako użytkownik");
+                                // Otwórz widok użytkownika
+                                UserForm userForm = new UserForm(userId);
+                                userForm.Show();
+                                this.Hide();
+                            }
+                            else if (uprawnienia == "admin")
+                            {
+                                MessageBox.Show("Zalogowano jako administrator");
+                                // Otwórz widok administratora
+                                AdminForm adminForm = new AdminForm();
+                                adminForm.Show();
+                                this.Hide();
+                            }
+                        }
+                        else
+                        {
+                            loginAttempts++;
+                            MessageBox.Show("Nieprawidłowe hasło");
+                        }
+                    }
+                    else
+                    {
+                        loginAttempts++;
+                        MessageBox.Show("Nieprawidłowy login");
+                    }
+
+                    // Sprawdzenie, czy liczba prób przekroczyła 3
+                    if (loginAttempts >= 3)
+                    {
+                        MessageBox.Show("Zbyt wiele nieudanych prób logowania. Konto zostało zablokowane.");
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void chkShowPassword_CheckedChanged(object sender, EventArgs e)
+        {
+            if (chkShowPassword.Checked)
+            {
+                txtPassword.UseSystemPasswordChar = false;
+            }
+            else
+            {
+                txtPassword.UseSystemPasswordChar = true;
+            }
+        }
+
+        private void btnGoToRegister_Click(object sender, EventArgs e)
+        {
+            RegisterForm registerForm = new RegisterForm();
+            registerForm.Show();
+            this.Hide();
+        }
+
+        private void LoginForm_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+    }
+}
