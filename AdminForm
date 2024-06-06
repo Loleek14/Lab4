@@ -1,0 +1,405 @@
+using System;
+using System.Windows.Forms;
+using MySql.Data.MySqlClient;
+using System.Data;
+
+namespace lab4C_
+{
+    public partial class AdminForm : Form
+    {
+        private DatabaseHelper db = new DatabaseHelper();
+
+        public AdminForm()
+        {
+            InitializeComponent();
+            LoadEventList();
+            LoadUserLogins();
+            LoadRegistrations();
+        }
+
+        private void LoadEventList()
+        {
+            string query = "SELECT id, nazwa FROM events";
+            try
+            {
+                DataTable dataTable = db.ExecuteQueryToDataTable(query, null);
+                cmbDeleteEvent.DataSource = dataTable;
+                cmbDeleteEvent.DisplayMember = "nazwa";
+                cmbDeleteEvent.ValueMember = "id";
+
+                cmbEditEvent.DataSource = dataTable.Copy();
+                cmbEditEvent.DisplayMember = "nazwa";
+                cmbEditEvent.ValueMember = "id";
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void LoadUserLogins()
+        {
+            string query = "SELECT login FROM users";
+            try
+            {
+                DataTable dataTable = db.ExecuteQueryToDataTable(query, null);
+                cmbResetUserLogin.DataSource = dataTable;
+                cmbResetUserLogin.DisplayMember = "login";
+                cmbResetUserLogin.ValueMember = "login";
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void LoadRegistrations()
+        {
+            string query = "SELECT er.id, u.login AS user_login, e.nazwa AS event_name, er.status FROM event_registrations er JOIN users u ON er.user_id = u.id JOIN events e ON er.event_id = e.id";
+            try
+            {
+                DataTable dataTable = db.ExecuteQueryToDataTable(query, null);
+                dgvRegistrations.DataSource = dataTable;
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void AdminForm_Load(object sender, EventArgs e)
+        {
+        }
+
+        private void btnAddUser_Click(object sender, EventArgs e)
+        {
+            string firstName = txtUserFirstName.Text;
+            string lastName = txtUserLastName.Text;
+            string login = txtUserLogin.Text;
+            string email = txtUserEmail.Text;
+            string password = txtUserPassword.Text;
+
+            if (string.IsNullOrEmpty(firstName) || string.IsNullOrEmpty(lastName) || string.IsNullOrEmpty(login) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+            {
+                MessageBox.Show("Wszystkie pola są wymagane.");
+                return;
+            }
+
+            string query = "INSERT INTO users (imie, nazwisko, login, email, haslo, uprawnienia) VALUES (@firstName, @lastName, @login, @Email, @password, 'user')";
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@firstName", firstName),
+                new MySqlParameter("@lastName", lastName),
+                new MySqlParameter("@login", login),
+                new MySqlParameter("@Email", email),
+                new MySqlParameter("@password", password)
+            };
+
+            try
+            {
+                int result = db.ExecuteNonQuery(query, parameters);
+                if (result > 0)
+                {
+                    MessageBox.Show("Użytkownik dodany pomyślnie.");
+                }
+                else
+                {
+                    MessageBox.Show("Nie udało się dodać użytkownika.");
+                }
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void btnDeleteUser_Click(object sender, EventArgs e)
+        {
+            string login = txtDeleteUserLogin.Text;
+
+            if (string.IsNullOrEmpty(login))
+            {
+                MessageBox.Show("Login nie może być pusty.");
+                return;
+            }
+
+            string query = "DELETE FROM users WHERE login = @login";
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@login", login)
+            };
+
+            try
+            {
+                int result = db.ExecuteNonQuery(query, parameters);
+                if (result > 0)
+                {
+                    MessageBox.Show("Użytkownik usunięty pomyślnie.");
+                }
+                else
+                {
+                    MessageBox.Show("Nie udało się usunąć użytkownika.");
+                }
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void btnResetPassword_Click(object sender, EventArgs e)
+        {
+            string login = txtDeleteUserLogin.Text;
+            string newPassword = txtUserPassword.Text;
+
+            if (string.IsNullOrEmpty(login) || string.IsNullOrEmpty(newPassword))
+            {
+                MessageBox.Show("Login i nowe hasło nie mogą być puste.");
+                return;
+            }
+
+            string query = "UPDATE users SET haslo = @newPassword WHERE login = @login";
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@login", login),
+                new MySqlParameter("@newPassword", newPassword)
+            };
+
+            try
+            {
+                int result = db.ExecuteNonQuery(query, parameters);
+                if (result > 0)
+                {
+                    MessageBox.Show("Hasło zresetowane pomyślnie.");
+                }
+                else
+                {
+                    MessageBox.Show("Nie udało się zresetować hasła.");
+                }
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void btnConfirmResetPassword_Click(object sender, EventArgs e)
+        {
+            string login = cmbResetUserLogin.SelectedValue.ToString();
+            string newPassword = txtNewPassword.Text;
+            string repeatPassword = txtRepeatPassword.Text;
+
+            if (string.IsNullOrEmpty(newPassword) || string.IsNullOrEmpty(repeatPassword))
+            {
+                MessageBox.Show("Oba pola hasła są wymagane.");
+                return;
+            }
+
+            if (newPassword != repeatPassword)
+            {
+                MessageBox.Show("Hasła nie są zgodne.");
+                return;
+            }
+
+            string query = "UPDATE users SET haslo = @newPassword WHERE login = @login";
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@login", login),
+                new MySqlParameter("@newPassword", newPassword)
+            };
+
+            try
+            {
+                int result = db.ExecuteNonQuery(query, parameters);
+                if (result > 0)
+                {
+                    MessageBox.Show("Hasło zresetowane pomyślnie.");
+                }
+                else
+                {
+                    MessageBox.Show("Nie udało się zresetować hasła.");
+                }
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void btnAddEvent_Click(object sender, EventArgs e)
+        {
+            string eventName = txtEventName.Text;
+            string agenda = txtEventAgenda.Text;
+            DateTime eventDate = dtpEventDate.Value;
+
+            if (string.IsNullOrEmpty(eventName) || string.IsNullOrEmpty(agenda))
+            {
+                MessageBox.Show("Nazwa wydarzenia i agenda nie mogą być puste.");
+                return;
+            }
+
+            string query = "INSERT INTO events (nazwa, agenda, termin) VALUES (@eventName, @agenda, @eventDate)";
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@eventName", eventName),
+                new MySqlParameter("@agenda", agenda),
+                new MySqlParameter("@eventDate", eventDate)
+            };
+
+            try
+            {
+                int result = db.ExecuteNonQuery(query, parameters);
+                if (result > 0)
+                {
+                    MessageBox.Show("Wydarzenie dodane pomyślnie.");
+                    LoadEventList(); // Reload the event list to include the new event
+                }
+                else
+                {
+                    MessageBox.Show("Nie udało się dodać wydarzenia.");
+                }
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void btnDeleteEvent_Click(object sender, EventArgs e)
+        {
+            int eventId = (int)cmbDeleteEvent.SelectedValue;
+
+            if (eventId == 0)
+            {
+                MessageBox.Show("Proszę wybrać wydarzenie do usunięcia.");
+                return;
+            }
+
+            string query = "DELETE FROM events WHERE id = @eventId";
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@eventId", eventId)
+            };
+
+            try
+            {
+                int result = db.ExecuteNonQuery(query, parameters);
+                if (result > 0)
+                {
+                    MessageBox.Show("Wydarzenie usunięte pomyślnie.");
+                    LoadEventList(); // Reload the event list to reflect the deletion
+                }
+                else
+                {
+                    MessageBox.Show("Nie udało się usunąć wydarzenia.");
+                }
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void btnEditEvent_Click(object sender, EventArgs e)
+        {
+            int eventId = (int)cmbEditEvent.SelectedValue;
+            string newEventName = txtEventName.Text;
+            string newAgenda = txtEventAgenda.Text;
+            DateTime newEventDate = dtpEventDate.Value;
+
+            if (string.IsNullOrEmpty(newEventName) || string.IsNullOrEmpty(newAgenda))
+            {
+                MessageBox.Show("Nazwa wydarzenia i agenda nie mogą być puste.");
+                return;
+            }
+
+            string query = "UPDATE events SET nazwa = @newEventName, agenda = @newAgenda, termin = @newEventDate WHERE id = @eventId";
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@eventId", eventId),
+                new MySqlParameter("@newEventName", newEventName),
+                new MySqlParameter("@newAgenda", newAgenda),
+                new MySqlParameter("@newEventDate", newEventDate)
+            };
+
+            try
+            {
+                int result = db.ExecuteNonQuery(query, parameters);
+                if (result > 0)
+                {
+                    MessageBox.Show("Wydarzenie zaktualizowane pomyślnie.");
+                    LoadEventList(); // Reload the event list to reflect the changes
+                }
+                else
+                {
+                    MessageBox.Show("Nie udało się zaktualizować wydarzenia.");
+                }
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void btnApproveRegistration_Click(object sender, EventArgs e)
+        {
+            if (dgvRegistrations.SelectedRows.Count > 0)
+            {
+                int registrationId = Convert.ToInt32(dgvRegistrations.SelectedRows[0].Cells["id"].Value);
+                string query = "UPDATE event_registrations SET status = 'zatwierdzony' WHERE id = @registrationId";
+                MySqlParameter[] parameters = {
+                    new MySqlParameter("@registrationId", registrationId)
+                };
+
+                try
+                {
+                    int result = db.ExecuteNonQuery(query, parameters);
+                    if (result > 0)
+                    {
+                        MessageBox.Show("Rejestracja zatwierdzona pomyślnie.");
+                        LoadRegistrations(); // Reload the registration list to reflect the changes
+                    }
+                    else
+                    {
+                        MessageBox.Show("Nie udało się zatwierdzić rejestracji.");
+                    }
+                }
+                catch (MySqlException ex)
+                {
+                    MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Proszę wybrać rejestrację do zatwierdzenia.");
+            }
+        }
+
+        private void btnRejectRegistration_Click(object sender, EventArgs e)
+        {
+            if (dgvRegistrations.SelectedRows.Count > 0)
+            {
+                int registrationId = Convert.ToInt32(dgvRegistrations.SelectedRows[0].Cells["id"].Value);
+                string query = "UPDATE event_registrations SET status = 'odrzucony' WHERE id = @registrationId";
+                MySqlParameter[] parameters = {
+                    new MySqlParameter("@registrationId", registrationId)
+                };
+
+                try
+                {
+                    int result = db.ExecuteNonQuery(query, parameters);
+                    if (result > 0)
+                    {
+                        MessageBox.Show("Rejestracja odrzucona pomyślnie.");
+                        LoadRegistrations(); // Reload the registration list to reflect the changes
+                    }
+                    else
+                    {
+                        MessageBox.Show("Nie udało się odrzucić rejestracji.");
+                    }
+                }
+                catch (MySqlException ex)
+                {
+                    MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Proszę wybrać rejestrację do odrzucenia.");
+            }
+        }
+    }
+}
