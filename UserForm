@@ -1,0 +1,128 @@
+using System;
+using System.Data;
+using System.Windows.Forms;
+using MySql.Data.MySqlClient;
+
+namespace lab4C_
+{
+    public partial class UserForm : Form
+    {
+        private DatabaseHelper db = new DatabaseHelper();
+        private int userId;
+
+        public UserForm(int userId)
+        {
+            this.userId = userId;
+            InitializeComponent();
+
+            if (!db.TestConnection())
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych.");
+                this.Close();
+            }
+        }
+
+        private void UserForm_Load(object sender, EventArgs e)
+        {
+            LoadEventNames();
+        }
+
+        private void LoadEventNames()
+        {
+            string query = "SELECT id, nazwa FROM events";
+            try
+            {
+                DataTable eventsTable = db.ExecuteQueryToDataTable(query, null);
+                Console.WriteLine("Liczba wydarzeń: " + eventsTable.Rows.Count);
+                if (eventsTable.Rows.Count > 0)
+                {
+                    foreach (DataRow row in eventsTable.Rows)
+                    {
+                        Console.WriteLine("Wydarzenie: " + row["nazwa"]);
+                    }
+                    cmbEvents.DisplayMember = "nazwa";
+                    cmbEvents.ValueMember = "id";
+                    cmbEvents.DataSource = eventsTable;
+                }
+                else
+                {
+                    MessageBox.Show("Brak dostępnych wydarzeń.");
+                }
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void cmbEvents_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cmbEvents.SelectedValue != null && int.TryParse(cmbEvents.SelectedValue.ToString(), out int selectedEventId))
+            {
+                LoadAgenda(selectedEventId);
+            }
+        }
+
+        private void LoadAgenda(int eventId)
+        {
+            string query = "SELECT agenda, termin FROM events WHERE id = @eventId";
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@eventId", eventId)
+            };
+
+            try
+            {
+                DataTable agendaTable = db.ExecuteQueryToDataTable(query, parameters);
+                if (agendaTable.Rows.Count > 0)
+                {
+                    DataRow row = agendaTable.Rows[0];
+                    txtAgenda.Text = row["agenda"].ToString();
+                    dtpEventDate.Value = Convert.ToDateTime(row["termin"]);
+                }
+                else
+                {
+                    txtAgenda.Text = "Brak agendy dla wybranego wydarzenia.";
+                }
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Błąd połączenia z bazą danych: " + ex.Message);
+            }
+        }
+
+        private void btnRegister_Click(object sender, EventArgs e)
+        {
+            int eventId = (int)cmbEvents.SelectedValue;
+            DateTime eventDate = dtpEventDate.Value;
+            string participationType = cmbParticipationType.SelectedItem.ToString();
+            string foodPreference = cmbFoodPreference.SelectedItem.ToString();
+
+            string query = "INSERT INTO event_registrations (user_id, event_id, typ_uczestnictwa, wyzywienie) " +
+                           "VALUES (@userId, @eventId, @participationType, @foodPreference)";
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@userId", userId),
+                new MySqlParameter("@eventId", eventId),
+                new MySqlParameter("@participationType", participationType),
+                new MySqlParameter("@foodPreference", foodPreference)
+            };
+
+            try
+            {
+                int result = db.ExecuteNonQuery(query, parameters);
+                if (result > 0)
+                {
+                    MessageBox.Show("Zapis na wydarzenie zakończony sukcesem!");
+                }
+                else
+                {
+                    MessageBox.Show("Nie udało się zapisać na wydarzenie.");
+                }
+            }
+            catch (MySqlException ex)
+            {
+
+
+            }
+        }
+    }
+}
